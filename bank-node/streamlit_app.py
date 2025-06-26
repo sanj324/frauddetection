@@ -4,19 +4,14 @@ import joblib
 import os
 import matplotlib.pyplot as plt
 
-
+# Dynamically find model path (works both locally and in Railway)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "model", "suspicious_model.pkl")
-
-model = joblib.load(MODEL_PATH)
-
-
-MODEL_PATH = "bank-node/model/suspicious_model.pkl"
-
 
 # Load model
 model = joblib.load(MODEL_PATH)
 
+# UI
 st.set_page_config(page_title="🧠 Suspicious Account Detector", layout="wide")
 st.title("🔍 Suspicious Account Detector")
 
