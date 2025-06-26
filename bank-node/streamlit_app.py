@@ -4,7 +4,15 @@ import joblib
 import os
 import matplotlib.pyplot as plt
 
-MODEL_PATH = "model/suspicious_model.pkl"
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "model", "suspicious_model.pkl")
+
+model = joblib.load(MODEL_PATH)
+
+
+MODEL_PATH = "bank-node/model/suspicious_model.pkl"
+
 
 # Load model
 model = joblib.load(MODEL_PATH)
