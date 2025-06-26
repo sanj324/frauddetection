@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pkl
+
+# Environment
+.venv/
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# MLflow
+mlruns/
+
+# Streamlit
+.streamlit/
+
+# VSCode
+.vscode/

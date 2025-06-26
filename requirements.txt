@@ -1,0 +1,10 @@
+pandas
+numpy
+scikit-learn
+torch
+mlflow
+sqlalchemy
+psycopg2-binary
+fastapi
+uvicorn
+python-dotenv

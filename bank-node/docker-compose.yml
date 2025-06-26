@@ -1,0 +1,10 @@
+services:
+  bank_infer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - "E:/sad-fed/mlruns:/mlruns"  # 👈 Mount MLflow model volume
