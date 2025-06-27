@@ -4,7 +4,6 @@ import joblib
 import os
 import matplotlib.pyplot as plt
 import shap
-import streamlit.components.v1 as components
 
 # Page config
 st.set_page_config(page_title="🧠 Suspicious Account Detector", layout="wide")
@@ -71,20 +70,18 @@ if uploaded_file is not None:
     shap.summary_plot(shap_values, df_features_only, show=False)
     st.pyplot(fig_summary)
 
-    # Record-level SHAP force plots
-    st.markdown("### 🔍 <span style='color:#aa3333;'>Record-Level Explanation (SHAP Force Plot)</span>", unsafe_allow_html=True)
-    shap.initjs()
-
+    st.markdown("### 🔍 <span style='color:#aa3333;'>Record-Level SHAP Explanation (Matplotlib)</span>", unsafe_allow_html=True)
     for i in range(min(5, len(df))):
         st.markdown(f"**Record {i + 1}**")
-        force_plot_html = shap.force_plot(
+        fig_force, ax_force = plt.subplots(figsize=(10, 1))
+        shap.force_plot(
             base_value=explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value,
             shap_values=shap_values[1][i] if isinstance(shap_values, list) else shap_values[i],
             features=df_features_only.iloc[i],
-            matplotlib=False,
+            matplotlib=True,
             show=False
         )
-        components.html(force_plot_html.html(), height=300)
+        st.pyplot(fig_force)
 
     # Download results
     csv = df.to_csv(index=False).encode("utf-8")
