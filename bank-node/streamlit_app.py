@@ -4,8 +4,7 @@ import joblib
 import os
 import matplotlib.pyplot as plt
 import shap
-import warnings
-import shap.plots._force as shap_force  # Compatibility fix for SHAP force plot
+import shap.plots._force as shap_force
 
 # Page config
 st.set_page_config(page_title="🧠 Suspicious Account Detector", layout="wide")
@@ -68,17 +67,17 @@ if uploaded_file is not None:
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(df_features_only)
 
-    warnings.filterwarnings("ignore")
     fig_summary, ax_summary = plt.subplots()
     shap.summary_plot(shap_values, df_features_only, show=False)
     st.pyplot(fig_summary)
 
+    # Force plots (Record-Level Explainability)
     st.markdown("### 🔍 <span style='color:#aa3333;'>Record-Level Explanation (SHAP Force Plot)</span>", unsafe_allow_html=True)
     for i in range(min(5, len(df))):
         st.markdown(f"**Record {i + 1}**")
         force_html = shap_force.force_plot(
-            explainer.expected_value[1],
-            shap_values[1][i],
+            explainer.expected_value,
+            shap_values[i],
             df_features_only.iloc[i],
             matplotlib=False
         )
