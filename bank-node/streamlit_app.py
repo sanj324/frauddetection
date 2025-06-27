@@ -4,7 +4,7 @@ import joblib
 import os
 import matplotlib.pyplot as plt
 import shap
-import shap.plots._force as shap_force
+import streamlit.components.v1 as components
 
 # Page config
 st.set_page_config(page_title="🧠 Suspicious Account Detector", layout="wide")
@@ -17,16 +17,16 @@ FEATURES_PATH = os.path.join(BASE_DIR, "model", "feature_columns.pkl")
 model = joblib.load(MODEL_PATH)
 feature_columns = joblib.load(FEATURES_PATH)
 
-# App title
+# Title
 st.markdown("<h1 style='color:navy;'>🔍 Suspicious Account Detector</h1>", unsafe_allow_html=True)
 
-# Upload section
+# Upload
 uploaded_file = st.file_uploader("📁 Upload CSV file with account data", type=["csv"])
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
 
-    # Align columns
+    # Align input with training features
     df_features_only = df[feature_columns]
 
     # Predict
@@ -48,7 +48,7 @@ if uploaded_file is not None:
     col3.metric("🟩 Normal", normal)
     col4.metric("⚠️ Suspicious Rate", f"{suspicious_rate:.2f}%")
 
-    # Results table
+    # Table
     st.success("✅ Prediction Complete")
     st.markdown("### 🧾 <span style='color:darkgreen;'>Prediction Table</span>", unsafe_allow_html=True)
     st.dataframe(df)
@@ -61,29 +61,30 @@ if uploaded_file is not None:
     ax.axis("equal")
     st.pyplot(fig)
 
-    # SHAP Explainability
+    # SHAP Global Summary
     st.markdown("---")
     st.markdown("### 🧠 <span style='color:brown;'>Global Feature Impact (SHAP)</span>", unsafe_allow_html=True)
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(df_features_only)
 
+    shap.initjs()
     fig_summary, ax_summary = plt.subplots()
     shap.summary_plot(shap_values, df_features_only, show=False)
     st.pyplot(fig_summary)
 
-    # Force plots (Record-Level Explainability)
+    # SHAP Record-Level Force Plots
     st.markdown("### 🔍 <span style='color:#aa3333;'>Record-Level Explanation (SHAP Force Plot)</span>", unsafe_allow_html=True)
     for i in range(min(5, len(df))):
         st.markdown(f"**Record {i + 1}**")
-        force_html = shap_force.force_plot(
+        force_plot_html = shap.force_plot(
             explainer.expected_value,
             shap_values[i],
             df_features_only.iloc[i],
             matplotlib=False
         )
-        st.components.v1.html(force_html.html(), height=200)
+        components.html(force_plot_html, height=300)
 
-    # Download results
+    # Download
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button(
         label="⬇️ Download Results as CSV",
