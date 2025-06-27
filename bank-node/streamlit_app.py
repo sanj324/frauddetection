@@ -74,7 +74,7 @@ if uploaded_file is not None:
     shap.summary_plot(shap_values, df_features_only, show=False)
     st.pyplot(fig_summary)
 
-    # Record-level SHAP force plots
+    # Record-level force plots
     st.markdown("### 🔍 <span style='color:#aa3333;'>Record-Level SHAP Force Plot</span>", unsafe_allow_html=True)
     for i in range(min(3, len(df))):
         st.markdown(f"**Record {i + 1}**")
@@ -86,14 +86,14 @@ if uploaded_file is not None:
                 shap_val = shap_values[i]
                 base_val = explainer.expected_value
 
-            force_plot = shap.plots.force(base_val, shap_val, df_features_only.iloc[i])
+            # Use force_plot with JS rendering
+            force_plot = shap.force_plot(base_val, shap_val, df_features_only.iloc[i], matplotlib=False)
             st_shap(force_plot, height=300)
         except Exception as e:
             st.warning(f"⚠️ Could not render force plot for record {i + 1}: {e}")
 
-    # Download predictions
+    # Download
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("⬇️ Download Results as CSV", csv, "prediction_results.csv", "text/csv")
-
 else:
     st.warning("👆 Please upload a CSV file to begin.")
