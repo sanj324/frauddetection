@@ -67,7 +67,6 @@ if uploaded_file is not None:
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(df_features_only)
 
-    shap.initjs()
     fig_summary, ax_summary = plt.subplots()
     shap.summary_plot(shap_values, df_features_only, show=False)
     st.pyplot(fig_summary)
@@ -77,12 +76,12 @@ if uploaded_file is not None:
     for i in range(min(5, len(df))):
         st.markdown(f"**Record {i + 1}**")
         force_plot_html = shap.force_plot(
-            explainer.expected_value,
-            shap_values[i],
+            explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value,
+            shap_values[1][i] if isinstance(shap_values, list) else shap_values[i],
             df_features_only.iloc[i],
             matplotlib=False
         )
-        components.html(force_plot_html, height=300)
+        components.html(force_plot_html.html(), height=300)
 
     # Download
     csv = df.to_csv(index=False).encode("utf-8")
