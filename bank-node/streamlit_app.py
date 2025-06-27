@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import shap
 import streamlit.components.v1 as components
 
-# Helper for SHAP force plot
+# Helper to render SHAP plots in Streamlit
 def st_shap(plot, height=None):
     shap_html = f"<head>{shap.getjs()}</head><body>{plot.html()}</body>"
     components.html(shap_html, height=height)
@@ -14,7 +14,7 @@ def st_shap(plot, height=None):
 # Page config
 st.set_page_config(page_title="🧠 Suspicious Account Detector", layout="wide")
 
-# Load model and feature columns
+# Load model and features
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "model", "suspicious_model.pkl")
 FEATURES_PATH = os.path.join(BASE_DIR, "model", "feature_columns.pkl")
@@ -22,19 +22,17 @@ FEATURES_PATH = os.path.join(BASE_DIR, "model", "feature_columns.pkl")
 model = joblib.load(MODEL_PATH)
 feature_columns = joblib.load(FEATURES_PATH)
 
-# App title
+# Title
 st.markdown("<h1 style='color:navy;'>🔍 Suspicious Account Detector</h1>", unsafe_allow_html=True)
 
-# Upload section
+# File upload
 uploaded_file = st.file_uploader("📁 Upload CSV file with account data", type=["csv"])
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
-
-    # Align columns
     df_features_only = df[feature_columns]
 
-    # Predict
+    # Prediction
     predictions = model.predict(df_features_only)
     df["prediction"] = predictions
     df["prediction_label"] = df["prediction"].apply(lambda x: "🔵 Suspicious" if x == 1 else "🔴 Normal")
@@ -58,7 +56,7 @@ if uploaded_file is not None:
     st.markdown("### 🧾 <span style='color:darkgreen;'>Prediction Table</span>", unsafe_allow_html=True)
     st.dataframe(df)
 
-    # Pie Chart
+    # Pie chart
     st.markdown("### 📊 <span style='color:purple;'>Prediction Summary</span>", unsafe_allow_html=True)
     summary = df["prediction_label"].value_counts()
     fig, ax = plt.subplots()
@@ -66,7 +64,7 @@ if uploaded_file is not None:
     ax.axis("equal")
     st.pyplot(fig)
 
-    # SHAP Explainability
+    # SHAP explainability
     st.markdown("---")
     st.markdown("### 🧠 <span style='color:brown;'>Global Feature Impact (SHAP)</span>", unsafe_allow_html=True)
     explainer = shap.TreeExplainer(model)
@@ -76,12 +74,13 @@ if uploaded_file is not None:
     shap.summary_plot(shap_values, df_features_only, show=False)
     st.pyplot(fig_summary)
 
+    # Force plots
     st.markdown("### 🔍 <span style='color:#aa3333;'>Record-Level SHAP Force Plot</span>", unsafe_allow_html=True)
     for i in range(min(3, len(df))):
         st.markdown(f"**Record {i + 1}**")
         try:
             if isinstance(shap_values, list):
-                shap_val = shap_values[1][i]  # suspicious class
+                shap_val = shap_values[1][i]
                 base_val = explainer.expected_value[1]
             else:
                 shap_val = shap_values[i]
@@ -90,15 +89,10 @@ if uploaded_file is not None:
             force_plot = shap.plots.force(base_val, shap_val, df_features_only.iloc[i])
             st_shap(force_plot, height=300)
         except Exception as e:
-            st.warning(f"⚠️ Could not render force plot for record {i+1}: {e}")
+            st.warning(f"⚠️ Could not render force plot for record {i + 1}: {e}")
 
-    # Download results
+    # Download
     csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button(
-        label="⬇️ Download Results as CSV",
-        data=csv,
-        file_name="prediction_results.csv",
-        mime="text/csv"
-    )
+    st.download_button("⬇️ Download Results as CSV", csv, "prediction_results.csv", "text/csv")
 else:
     st.warning("👆 Please upload a CSV file to begin.")
