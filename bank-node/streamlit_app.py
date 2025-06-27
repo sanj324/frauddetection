@@ -6,15 +6,15 @@ import matplotlib.pyplot as plt
 import shap
 import streamlit.components.v1 as components
 
-# Helper to display force plot in Streamlit
+# Helper to render SHAP force plots in Streamlit
 def st_shap(plot, height=None):
     shap_html = f"<head>{shap.getjs()}</head><body>{plot.html()}</body>"
     components.html(shap_html, height=height)
 
-# Set Streamlit page config
+# Page config
 st.set_page_config(page_title="🧠 Suspicious Account Detector", layout="wide")
 
-# Load model and features
+# Load model and feature columns
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "model", "suspicious_model.pkl")
 FEATURES_PATH = os.path.join(BASE_DIR, "model", "feature_columns.pkl")
@@ -50,7 +50,7 @@ if uploaded_file is not None:
     col3.metric("🔴 Normal", normal)
     col4.metric("⚠️ Suspicious Rate", f"{suspicious_rate:.2f}%")
 
-    # Results table
+    # Show prediction table
     st.markdown("### 🧾 Prediction Table")
     st.dataframe(df)
 
@@ -70,7 +70,7 @@ if uploaded_file is not None:
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(df_features_only)
 
-        # Determine class index automatically
+        # Handle multi-output SHAP formats
         if isinstance(shap_values, list):
             class_index = 1 if len(shap_values) > 1 else 0
             class_shap_values = shap_values[class_index]
@@ -80,8 +80,12 @@ if uploaded_file is not None:
         st.code(f"SHAP shape: {class_shap_values.shape}")
         st.code(f"Input shape: {df_features_only.shape}")
 
-        # Check shape compatibility
-        if class_shap_values.shape[0] == df_features_only.shape[0] and class_shap_values.shape[1] == df_features_only.shape[1]:
+        # Auto-fix shape mismatch: reshape if needed
+        if len(class_shap_values.shape) == 3 and class_shap_values.shape[2] == 2:
+            class_shap_values = class_shap_values[:, :, 1]
+
+        if class_shap_values.shape[0] == df_features_only.shape[0]:
+            # Global Summary Plot
             fig_summary = plt.figure()
             shap.summary_plot(class_shap_values, df_features_only, show=False)
             st.pyplot(fig_summary)
@@ -103,7 +107,7 @@ if uploaded_file is not None:
     except Exception as e:
         st.warning(f"⚠️ Could not generate SHAP plots: {e}")
 
-    # Download CSV
+    # CSV Download
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("⬇️ Download Results as CSV", csv, "prediction_results.csv", "text/csv")
 
