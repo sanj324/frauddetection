@@ -7,3 +7,4 @@ uvicorn
 mlflow
 pandas
 scikit-learn
+shap
