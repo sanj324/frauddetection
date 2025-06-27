@@ -1,96 +1,24 @@
-import streamlit as st
-import pandas as pd
-import joblib
-import os
-import matplotlib.pyplot as plt
-import shap
+# Record-Level SHAP Force Plot (safe version)
+st.markdown("### 🔍 <span style='color:#aa3333;'>Record-Level SHAP Force Plot</span>", unsafe_allow_html=True)
 
-# Page config
-st.set_page_config(page_title="🧠 Suspicious Account Detector", layout="wide")
+for i in range(min(3, len(df))):
+    st.markdown(f"**Record {i + 1}**")
 
-# Load model and features
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "model", "suspicious_model.pkl")
-FEATURES_PATH = os.path.join(BASE_DIR, "model", "feature_columns.pkl")
+    # Create a figure manually for matplotlib-based force plot
+    fig_force, ax_force = plt.subplots(figsize=(10, 1))
 
-model = joblib.load(MODEL_PATH)
-feature_columns = joblib.load(FEATURES_PATH)
+    # Safely extract SHAP values
+    base_val = explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value
+    shap_val = shap_values[1][i] if isinstance(shap_values, list) else shap_values[i]
+    features_row = df_features_only.iloc[i]
 
-# Title
-st.markdown("<h1 style='color:navy;'>🔍 Suspicious Account Detector</h1>", unsafe_allow_html=True)
-
-# Upload CSV
-uploaded_file = st.file_uploader("📁 Upload CSV file with account data", type=["csv"])
-
-if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
-
-    # Align input features
-    df_features_only = df[feature_columns]
-
-    # Predict
-    predictions = model.predict(df_features_only)
-    df["prediction"] = predictions
-    df["prediction_label"] = df["prediction"].apply(lambda x: "🟥 Suspicious" if x == 1 else "🟩 Normal")
-
-    # KPIs
-    total = len(df)
-    suspicious = (df["prediction"] == 1).sum()
-    normal = total - suspicious
-    suspicious_rate = (suspicious / total) * 100
-
-    st.markdown("---")
-    st.markdown("### 📈 <span style='color:darkblue;'>Account Summary KPIs</span>", unsafe_allow_html=True)
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("🔢 Total Accounts", total)
-    col2.metric("🟥 Suspicious", suspicious)
-    col3.metric("🟩 Normal", normal)
-    col4.metric("⚠️ Suspicious Rate", f"{suspicious_rate:.2f}%")
-
-    # Dataframe Output
-    st.success("✅ Prediction Complete")
-    st.markdown("### 🧾 <span style='color:darkgreen;'>Prediction Table</span>", unsafe_allow_html=True)
-    st.dataframe(df)
-
-    # Pie chart
-    st.markdown("### 📊 <span style='color:purple;'>Prediction Summary</span>", unsafe_allow_html=True)
-    summary = df["prediction_label"].value_counts()
-    fig_pie, ax_pie = plt.subplots()
-    ax_pie.pie(summary, labels=summary.index, autopct='%1.1f%%', startangle=90)
-    ax_pie.axis("equal")
-    st.pyplot(fig_pie)
-
-    # SHAP Global Summary
-    st.markdown("### 🧠 <span style='color:brown;'>Global Feature Impact (SHAP)</span>", unsafe_allow_html=True)
-    explainer = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(df_features_only)
-
-    fig_summary, ax_summary = plt.subplots()
-    shap.summary_plot(shap_values, df_features_only, show=False)
-    st.pyplot(fig_summary)
-
-    # SHAP Force Plot - Record Level
-    st.markdown("### 🔍 <span style='color:#aa3333;'>Record-Level SHAP Force Plot</span>", unsafe_allow_html=True)
-    for i in range(min(3, len(df))):
-        st.markdown(f"**Record {i + 1}**")
-
-        fig_force, ax_force = plt.subplots(figsize=(10, 1))
-        shap.force_plot(
-            base_value=explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value,
-            shap_values=shap_values[1][i] if isinstance(shap_values, list) else shap_values[i],
-            features=df_features_only.iloc[i],
-            matplotlib=True,
-            show=False
-        )
-        st.pyplot(fig_force)
-
-    # Download CSV
-    csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button(
-        label="⬇️ Download Results as CSV",
-        data=csv,
-        file_name="prediction_results.csv",
-        mime="text/csv"
+    shap.force_plot(
+        base_value=base_val,
+        shap_values=shap_val,
+        features=features_row,
+        matplotlib=True,
+        show=False
     )
-else:
-    st.warning("👆 Please upload a CSV file to begin.")
+
+    # Render the figure
+    st.pyplot(fig_force)
