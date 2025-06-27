@@ -6,15 +6,15 @@ import matplotlib.pyplot as plt
 import shap
 import streamlit.components.v1 as components
 
-# Helper for displaying SHAP force plots in Streamlit
+# Helper to display force plot in Streamlit
 def st_shap(plot, height=None):
     shap_html = f"<head>{shap.getjs()}</head><body>{plot.html()}</body>"
     components.html(shap_html, height=height)
 
-# Page config
+# Set Streamlit page config
 st.set_page_config(page_title="🧠 Suspicious Account Detector", layout="wide")
 
-# Load model and feature columns
+# Load model and features
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "model", "suspicious_model.pkl")
 FEATURES_PATH = os.path.join(BASE_DIR, "model", "feature_columns.pkl")
@@ -37,7 +37,7 @@ if uploaded_file is not None:
     df["prediction"] = predictions
     df["prediction_label"] = df["prediction"].apply(lambda x: "🔵 Suspicious" if x == 1 else "🔴 Normal")
 
-    # Metrics display
+    # Metrics
     total = len(df)
     suspicious = (df["prediction"] == 1).sum()
     normal = total - suspicious
@@ -50,11 +50,11 @@ if uploaded_file is not None:
     col3.metric("🔴 Normal", normal)
     col4.metric("⚠️ Suspicious Rate", f"{suspicious_rate:.2f}%")
 
-    # Prediction Table
+    # Results table
     st.markdown("### 🧾 Prediction Table")
     st.dataframe(df)
 
-    # Pie Chart
+    # Pie chart
     st.markdown("### 📊 Prediction Summary")
     summary = df["prediction_label"].value_counts()
     fig, ax = plt.subplots()
@@ -70,29 +70,32 @@ if uploaded_file is not None:
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(df_features_only)
 
-        class_index = 1  # Class for suspicious accounts
-        class_shap_values = shap_values[class_index]
+        # Determine class index automatically
+        if isinstance(shap_values, list):
+            class_index = 1 if len(shap_values) > 1 else 0
+            class_shap_values = shap_values[class_index]
+        else:
+            class_shap_values = shap_values
 
-        # Debug: shapes
-        st.code(f"SHAP shape: {class_shap_values.shape}", language="python")
-        st.code(f"Input shape: {df_features_only.shape}", language="python")
+        st.code(f"SHAP shape: {class_shap_values.shape}")
+        st.code(f"Input shape: {df_features_only.shape}")
 
-        if class_shap_values.shape[:2] == df_features_only.shape:
+        # Check shape compatibility
+        if class_shap_values.shape[0] == df_features_only.shape[0] and class_shap_values.shape[1] == df_features_only.shape[1]:
             fig_summary = plt.figure()
             shap.summary_plot(class_shap_values, df_features_only, show=False)
             st.pyplot(fig_summary)
         else:
             st.warning("⚠️ SHAP value shape mismatch. Cannot plot summary.")
 
-        # Force plots
+        # Record-level SHAP force plot
         st.markdown("### 🔍 Record-Level SHAP Force Plot")
         for i in range(min(3, len(df))):
             st.markdown(f"**Record {i + 1}**")
             try:
                 shap_val = class_shap_values[i]
-                base_val = explainer.expected_value[class_index]
-                features_row = df_features_only.iloc[i]
-                force_plot = shap.force_plot(base_val, shap_val, features_row, matplotlib=False)
+                base_val = explainer.expected_value[class_index] if isinstance(explainer.expected_value, list) else explainer.expected_value
+                force_plot = shap.force_plot(base_val, shap_val, df_features_only.iloc[i], matplotlib=False)
                 st_shap(force_plot, height=300)
             except Exception as e:
                 st.warning(f"⚠️ Could not render force plot for record {i + 1}: {e}")
@@ -100,7 +103,7 @@ if uploaded_file is not None:
     except Exception as e:
         st.warning(f"⚠️ Could not generate SHAP plots: {e}")
 
-    # CSV Download
+    # Download CSV
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("⬇️ Download Results as CSV", csv, "prediction_results.csv", "text/csv")
 
