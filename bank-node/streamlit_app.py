@@ -4,6 +4,12 @@ import joblib
 import os
 import matplotlib.pyplot as plt
 import shap
+import streamlit.components.v1 as components
+
+# Helper for SHAP force plot
+def st_shap(plot, height=None):
+    shap_html = f"<head>{shap.getjs()}</head><body>{plot.html()}</body>"
+    components.html(shap_html, height=height)
 
 # Page config
 st.set_page_config(page_title="🧠 Suspicious Account Detector", layout="wide")
@@ -75,14 +81,14 @@ if uploaded_file is not None:
         st.markdown(f"**Record {i + 1}**")
         try:
             if isinstance(shap_values, list):
-                shap_val = shap_values[1][i]  # class index 1: suspicious
+                shap_val = shap_values[1][i]  # suspicious class
                 base_val = explainer.expected_value[1]
             else:
                 shap_val = shap_values[i]
                 base_val = explainer.expected_value
 
-            force_plot_html = shap.force_plot(base_val, shap_val, df_features_only.iloc[i], matplotlib=False)
-            st.components.v1.html(force_plot_html.html(), height=300)
+            force_plot = shap.plots.force(base_val, shap_val, df_features_only.iloc[i])
+            st_shap(force_plot, height=300)
         except Exception as e:
             st.warning(f"⚠️ Could not render force plot for record {i+1}: {e}")
 
