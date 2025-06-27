@@ -4,11 +4,12 @@ import joblib
 import os
 import matplotlib.pyplot as plt
 import shap
+import streamlit.components.v1 as components
 
 # Page config
-st.set_page_config(page_title="🧠 Suspicious Account Detector", layout="wide")
+st.set_page_config(page_title="🧐 Suspicious Account Detector", layout="wide")
 
-# Load model and features
+# Load model and feature columns
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "model", "suspicious_model.pkl")
 FEATURES_PATH = os.path.join(BASE_DIR, "model", "feature_columns.pkl")
@@ -24,12 +25,14 @@ uploaded_file = st.file_uploader("📁 Upload CSV file with account data", type=
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
+
+    # Align columns
     df_features = df[feature_columns]
 
-    # Predictions
+    # Predict
     predictions = model.predict(df_features)
     df["prediction"] = predictions
-    df["prediction_label"] = df["prediction"].apply(lambda x: "🟥 Suspicious" if x == 1 else "🟩 Normal")
+    df["prediction_label"] = df["prediction"].apply(lambda x: "🔵 Suspicious" if x == 1 else "🟩 Normal")
 
     # KPIs
     total = len(df)
@@ -41,10 +44,11 @@ if uploaded_file is not None:
     st.markdown("### 📈 <span style='color:darkblue;'>Account Summary KPIs</span>", unsafe_allow_html=True)
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("🔢 Total Accounts", total)
-    col2.metric("🟥 Suspicious", suspicious)
+    col2.metric("🔵 Suspicious", suspicious)
     col3.metric("🟩 Normal", normal)
     col4.metric("⚠️ Suspicious Rate", f"{suspicious_rate:.2f}%")
 
+    # Results table
     st.success("✅ Prediction Complete")
     st.markdown("### 🧾 <span style='color:darkgreen;'>Prediction Table</span>", unsafe_allow_html=True)
     st.dataframe(df)
@@ -52,38 +56,40 @@ if uploaded_file is not None:
     # Pie Chart
     st.markdown("### 📊 <span style='color:purple;'>Prediction Summary</span>", unsafe_allow_html=True)
     summary = df["prediction_label"].value_counts()
-    fig1, ax1 = plt.subplots()
-    ax1.pie(summary, labels=summary.index, autopct='%1.1f%%', startangle=90)
-    ax1.axis("equal")
-    st.pyplot(fig1)
+    fig, ax = plt.subplots()
+    ax.pie(summary, labels=summary.index, autopct='%1.1f%%', startangle=90)
+    ax.axis("equal")
+    st.pyplot(fig)
 
-    # SHAP Global Summary
+    # SHAP Explainability
     st.markdown("---")
     st.markdown("### 🧠 <span style='color:brown;'>Global Feature Impact (SHAP)</span>", unsafe_allow_html=True)
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(df_features)
 
-    fig2, ax2 = plt.subplots()
+    fig_summary, ax_summary = plt.subplots()
     shap.summary_plot(shap_values, df_features, show=False)
-    st.pyplot(fig2)
+    st.pyplot(fig_summary)
 
-    # SHAP Force Plot (Matplotlib Static)
-    st.markdown("### 🔍 <span style='color:#aa3333;'>Top 3 Record Explanations</span>", unsafe_allow_html=True)
+    st.markdown("### 🔍 <span style='color:#aa3333;'>Record-Level Explanation (SHAP Force Plot)</span>", unsafe_allow_html=True)
     for i in range(min(3, len(df))):
-        st.markdown(f"**Record {i+1}**")
-        fig3, ax3 = plt.subplots(figsize=(10, 1))
-        shap.force_plot(
+        st.markdown(f"**Record {i + 1}**")
+        force_plot_html = shap.plots.force(
             base_value=explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value,
             shap_values=shap_values[1][i] if isinstance(shap_values, list) else shap_values[i],
             features=df_features.iloc[i],
-            matplotlib=True,
-            show=False
+            matplotlib=False,
         )
-        st.pyplot(fig3)
+        components.html(force_plot_html.html(), height=300, scrolling=True)
 
-    # Download
+    # Download results
     csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button("⬇️ Download Results as CSV", data=csv, file_name="prediction_results.csv", mime="text/csv")
+    st.download_button(
+        label="⬇️ Download Results as CSV",
+        data=csv,
+        file_name="prediction_results.csv",
+        mime="text/csv"
+    )
 
 else:
-    st.warning("👆 Please upload a CSV file to begin.")
+    st.warning("👇 Please upload a CSV file to begin.")
