@@ -8,3 +8,5 @@ mlflow
 pandas
 scikit-learn
 shap
+lightgbm
+
