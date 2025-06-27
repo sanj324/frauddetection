@@ -70,19 +70,18 @@ if uploaded_file is not None:
     shap.summary_plot(shap_values, df_features_only, show=False)
     st.pyplot(fig_summary)
 
-    # Record-level force plot (matplotlib for Streamlit)
+    # Record-Level SHAP Explanation using force plots with matplotlib
     st.markdown("### 🔍 <span style='color:#aa3333;'>Record-Level Explanation (SHAP Force Plot)</span>", unsafe_allow_html=True)
-    for i in range(min(5, len(df_features_only))):
+
+    for i in range(min(5, len(df))):
         st.markdown(f"**Record {i + 1}**")
-        fig = plt.figure(figsize=(10, 1))
         shap.force_plot(
             base_value=explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value,
             shap_values=shap_values[1][i] if isinstance(shap_values, list) else shap_values[i],
             features=df_features_only.iloc[i],
-            matplotlib=True,
-            show=False
+            matplotlib=True
         )
-        st.pyplot(fig)
+        st.pyplot(bbox_inches='tight')
 
     # Download results
     csv = df.to_csv(index=False).encode("utf-8")
