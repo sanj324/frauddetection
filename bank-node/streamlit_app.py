@@ -7,7 +7,7 @@ import shap
 import streamlit.components.v1 as components
 
 # Page config
-st.set_page_config(page_title="🧐 Suspicious Account Detector", layout="wide")
+st.set_page_config(page_title="🧠 Suspicious Account Detector", layout="wide")
 
 # Load model and feature columns
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -27,12 +27,12 @@ if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
 
     # Align columns
-    df_features = df[feature_columns]
+    df_features_only = df[feature_columns]
 
     # Predict
-    predictions = model.predict(df_features)
+    predictions = model.predict(df_features_only)
     df["prediction"] = predictions
-    df["prediction_label"] = df["prediction"].apply(lambda x: "🔵 Suspicious" if x == 1 else "🟩 Normal")
+    df["prediction_label"] = df["prediction"].apply(lambda x: "🟥 Suspicious" if x == 1 else "🟩 Normal")
 
     # KPIs
     total = len(df)
@@ -44,7 +44,7 @@ if uploaded_file is not None:
     st.markdown("### 📈 <span style='color:darkblue;'>Account Summary KPIs</span>", unsafe_allow_html=True)
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("🔢 Total Accounts", total)
-    col2.metric("🔵 Suspicious", suspicious)
+    col2.metric("🟥 Suspicious", suspicious)
     col3.metric("🟩 Normal", normal)
     col4.metric("⚠️ Suspicious Rate", f"{suspicious_rate:.2f}%")
 
@@ -65,22 +65,26 @@ if uploaded_file is not None:
     st.markdown("---")
     st.markdown("### 🧠 <span style='color:brown;'>Global Feature Impact (SHAP)</span>", unsafe_allow_html=True)
     explainer = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(df_features)
+    shap_values = explainer.shap_values(df_features_only)
 
     fig_summary, ax_summary = plt.subplots()
-    shap.summary_plot(shap_values, df_features, show=False)
+    shap.summary_plot(shap_values, df_features_only, show=False)
     st.pyplot(fig_summary)
 
+    # Record-level SHAP force plots
     st.markdown("### 🔍 <span style='color:#aa3333;'>Record-Level Explanation (SHAP Force Plot)</span>", unsafe_allow_html=True)
-    for i in range(min(3, len(df))):
+    shap.initjs()
+
+    for i in range(min(5, len(df))):
         st.markdown(f"**Record {i + 1}**")
-        force_plot_html = shap.plots.force(
+        force_plot_html = shap.force_plot(
             base_value=explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value,
             shap_values=shap_values[1][i] if isinstance(shap_values, list) else shap_values[i],
-            features=df_features.iloc[i],
+            features=df_features_only.iloc[i],
             matplotlib=False,
+            show=False
         )
-        components.html(force_plot_html.html(), height=300, scrolling=True)
+        components.html(force_plot_html.html(), height=300)
 
     # Download results
     csv = df.to_csv(index=False).encode("utf-8")
@@ -92,4 +96,4 @@ if uploaded_file is not None:
     )
 
 else:
-    st.warning("👇 Please upload a CSV file to begin.")
+    st.warning("👆 Please upload a CSV file to begin.")
