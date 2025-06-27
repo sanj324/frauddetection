@@ -4,9 +4,8 @@ import joblib
 import os
 import matplotlib.pyplot as plt
 import shap
-import streamlit.components.v1 as components
-from streamlit_shap import st_shap
 import numpy as np
+from streamlit_shap import st_shap
 
 # Page config
 st.set_page_config(page_title="🧠 Suspicious Account Detector", layout="wide")
@@ -66,40 +65,46 @@ if uploaded_file is not None:
     # SHAP Explainability
     st.markdown("---")
     st.markdown("### 🧠 <span style='color:brown;'>Global Feature Impact (SHAP)</span>", unsafe_allow_html=True)
-    explainer = shap.Explainer(model, df_features_only)
-    shap_values = explainer(df_features_only)
 
-    # Fix SHAP shape extraction
-    if len(shap_values.values.shape) == 3:
-        class_index = 1 if shap_values.values.shape[2] > 1 else 0
-        shap_values_for_plot = shap_values.values[:, :, class_index]
-        base_values_for_plot = shap_values.base_values[:, class_index]
-    else:
-        shap_values_for_plot = shap_values.values
-        base_values_for_plot = shap_values.base_values
+    try:
+        explainer = shap.Explainer(model.predict, df_features_only)
+        shap_values = explainer(df_features_only)
 
-    st.code(f"SHAP shape: {shap_values_for_plot.shape}")
-    st.code(f"Input shape: {df_features_only.shape}")
+        # Handle SHAP values based on shape
+        if len(shap_values.shape) == 1:
+            shap_values_for_plot = np.expand_dims(shap_values, axis=0)
+            base_values_for_plot = np.expand_dims(explainer.expected_value, axis=0)
+        else:
+            shap_values_for_plot = shap_values.values if hasattr(shap_values, "values") else shap_values
+            base_values_for_plot = shap_values.base_values if hasattr(shap_values, "base_values") else explainer.expected_value
 
-    fig_summary = plt.figure()
-    shap.summary_plot(shap_values_for_plot, df_features_only, show=False)
-    st.pyplot(fig_summary)
+        st.code(f"SHAP shape: {shap_values_for_plot.shape}")
+        st.code(f"Input shape: {df_features_only.shape}")
 
-    st.markdown("### 🔍 <span style='color:#aa3333;'>Record-Level SHAP Force Plot</span>", unsafe_allow_html=True)
-    for i in range(min(3, len(df_features_only))):
-        st.markdown(f"**Record {i + 1}**")
-        try:
-            st_shap(
-                shap.force_plot(
-                    base_value=base_values_for_plot[i],
-                    shap_values=shap_values_for_plot[i],
-                    features=df_features_only.iloc[i],
-                    matplotlib=False
-                ),
-                height=300
-            )
-        except Exception as e:
-            st.warning(f"⚠️ Could not render force plot for record {i + 1}: {str(e)}")
+        # Summary Plot
+        fig_summary = plt.figure()
+        shap.summary_plot(shap_values_for_plot, df_features_only, show=False)
+        st.pyplot(fig_summary)
+
+        # Force Plot
+        st.markdown("### 🔍 <span style='color:#aa3333;'>Record-Level SHAP Force Plot</span>", unsafe_allow_html=True)
+        for i in range(min(3, len(df_features_only))):
+            st.markdown(f"**Record {i + 1}**")
+            try:
+                st_shap(
+                    shap.force_plot(
+                        base_value=base_values_for_plot[i],
+                        shap_values=shap_values_for_plot[i],
+                        features=df_features_only.iloc[i],
+                        matplotlib=False
+                    ),
+                    height=300
+                )
+            except Exception as e:
+                st.warning(f"⚠️ Could not render force plot for record {i + 1}: {str(e)}")
+
+    except Exception as e:
+        st.error(f"SHAP failed to compute explanations: {str(e)}")
 
     # Download results
     csv = df.to_csv(index=False).encode("utf-8")
