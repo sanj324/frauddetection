@@ -8,7 +8,7 @@ import shap
 # Page config
 st.set_page_config(page_title="🧠 Suspicious Account Detector", layout="wide")
 
-# Load model and feature columns
+# Load model and features
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "model", "suspicious_model.pkl")
 FEATURES_PATH = os.path.join(BASE_DIR, "model", "feature_columns.pkl")
@@ -16,16 +16,16 @@ FEATURES_PATH = os.path.join(BASE_DIR, "model", "feature_columns.pkl")
 model = joblib.load(MODEL_PATH)
 feature_columns = joblib.load(FEATURES_PATH)
 
-# App title
+# Title
 st.markdown("<h1 style='color:navy;'>🔍 Suspicious Account Detector</h1>", unsafe_allow_html=True)
 
-# Upload section
+# Upload CSV
 uploaded_file = st.file_uploader("📁 Upload CSV file with account data", type=["csv"])
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
 
-    # Align columns
+    # Align input features
     df_features_only = df[feature_columns]
 
     # Predict
@@ -47,21 +47,20 @@ if uploaded_file is not None:
     col3.metric("🟩 Normal", normal)
     col4.metric("⚠️ Suspicious Rate", f"{suspicious_rate:.2f}%")
 
-    # Results table
+    # Dataframe Output
     st.success("✅ Prediction Complete")
     st.markdown("### 🧾 <span style='color:darkgreen;'>Prediction Table</span>", unsafe_allow_html=True)
     st.dataframe(df)
 
-    # Pie Chart
+    # Pie chart
     st.markdown("### 📊 <span style='color:purple;'>Prediction Summary</span>", unsafe_allow_html=True)
     summary = df["prediction_label"].value_counts()
-    fig, ax = plt.subplots()
-    ax.pie(summary, labels=summary.index, autopct='%1.1f%%', startangle=90)
-    ax.axis("equal")
-    st.pyplot(fig)
+    fig_pie, ax_pie = plt.subplots()
+    ax_pie.pie(summary, labels=summary.index, autopct='%1.1f%%', startangle=90)
+    ax_pie.axis("equal")
+    st.pyplot(fig_pie)
 
-    # SHAP Explainability
-    st.markdown("---")
+    # SHAP Global Summary
     st.markdown("### 🧠 <span style='color:brown;'>Global Feature Impact (SHAP)</span>", unsafe_allow_html=True)
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(df_features_only)
@@ -70,20 +69,22 @@ if uploaded_file is not None:
     shap.summary_plot(shap_values, df_features_only, show=False)
     st.pyplot(fig_summary)
 
-    # Record-Level SHAP Explanation using force plots with matplotlib
-    st.markdown("### 🔍 <span style='color:#aa3333;'>Record-Level Explanation (SHAP Force Plot)</span>", unsafe_allow_html=True)
-
-    for i in range(min(5, len(df))):
+    # SHAP Force Plot - Record Level
+    st.markdown("### 🔍 <span style='color:#aa3333;'>Record-Level SHAP Force Plot</span>", unsafe_allow_html=True)
+    for i in range(min(3, len(df))):
         st.markdown(f"**Record {i + 1}**")
+
+        fig_force, ax_force = plt.subplots(figsize=(10, 1))
         shap.force_plot(
             base_value=explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value,
             shap_values=shap_values[1][i] if isinstance(shap_values, list) else shap_values[i],
             features=df_features_only.iloc[i],
-            matplotlib=True
+            matplotlib=True,
+            show=False
         )
-        st.pyplot(bbox_inches='tight')
+        st.pyplot(fig_force)
 
-    # Download results
+    # Download CSV
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button(
         label="⬇️ Download Results as CSV",
@@ -91,6 +92,5 @@ if uploaded_file is not None:
         file_name="prediction_results.csv",
         mime="text/csv"
     )
-
 else:
     st.warning("👆 Please upload a CSV file to begin.")
