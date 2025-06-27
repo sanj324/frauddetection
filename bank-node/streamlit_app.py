@@ -32,12 +32,12 @@ if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
     df_features_only = df[feature_columns]
 
-    # Model predictions
+    # Prediction
     predictions = model.predict(df_features_only)
     df["prediction"] = predictions
     df["prediction_label"] = df["prediction"].apply(lambda x: "🔵 Suspicious" if x == 1 else "🔴 Normal")
 
-    # Summary metrics
+    # KPIs
     total = len(df)
     suspicious = (df["prediction"] == 1).sum()
     normal = total - suspicious
@@ -50,7 +50,7 @@ if uploaded_file is not None:
     col3.metric("🔴 Normal", normal)
     col4.metric("⚠️ Suspicious Rate", f"{suspicious_rate:.2f}%")
 
-    # Prediction results
+    # Results table
     st.markdown("### 🧾 Prediction Table")
     st.dataframe(df)
 
@@ -62,17 +62,17 @@ if uploaded_file is not None:
     ax.axis("equal")
     st.pyplot(fig)
 
-    # SHAP explainability
+    # SHAP Explainability
     st.markdown("---")
     st.markdown("### 🧠 Global Feature Impact (SHAP)")
-
     try:
-        explainer = shap.Explainer(model, df_features_only)
-        shap_values = explainer(df_features_only)
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(df_features_only)
 
-        # Summary plot using SHAP beeswarm
-        fig_summary, ax = plt.subplots()
-        shap.plots.beeswarm(shap_values, max_display=15, show=False)
+        # Use class index 1 for 'Suspicious'
+        class_index = 1
+        fig_summary = plt.figure()
+        shap.summary_plot(shap_values[class_index], df_features_only, show=False)
         st.pyplot(fig_summary)
 
         # Record-level force plots
@@ -80,8 +80,8 @@ if uploaded_file is not None:
         for i in range(min(3, len(df))):
             st.markdown(f"**Record {i + 1}**")
             try:
-                base_val = shap_values.base_values[i]
-                shap_val = shap_values.values[i]
+                shap_val = shap_values[class_index][i]
+                base_val = explainer.expected_value[class_index]
                 force_plot = shap.force_plot(base_val, shap_val, df_features_only.iloc[i], matplotlib=False)
                 st_shap(force_plot, height=300)
             except Exception as e:
@@ -89,7 +89,7 @@ if uploaded_file is not None:
     except Exception as e:
         st.warning(f"⚠️ Could not generate SHAP plots: {e}")
 
-    # Download predictions
+    # Download button
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("⬇️ Download Results as CSV", csv, "prediction_results.csv", "text/csv")
 
