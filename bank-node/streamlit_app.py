@@ -70,16 +70,16 @@ if uploaded_file is not None:
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(df_features_only)
 
-    fig_summary, ax_summary = plt.subplots()
+    fig_summary = plt.figure()
     shap.summary_plot(shap_values, df_features_only, show=False)
     st.pyplot(fig_summary)
 
-    # Force plots
+    # Record-level SHAP force plots
     st.markdown("### 🔍 <span style='color:#aa3333;'>Record-Level SHAP Force Plot</span>", unsafe_allow_html=True)
     for i in range(min(3, len(df))):
         st.markdown(f"**Record {i + 1}**")
         try:
-            if isinstance(shap_values, list):
+            if isinstance(shap_values, list) and len(shap_values) == 2:
                 shap_val = shap_values[1][i]
                 base_val = explainer.expected_value[1]
             else:
@@ -91,8 +91,9 @@ if uploaded_file is not None:
         except Exception as e:
             st.warning(f"⚠️ Could not render force plot for record {i + 1}: {e}")
 
-    # Download
+    # Download predictions
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("⬇️ Download Results as CSV", csv, "prediction_results.csv", "text/csv")
+
 else:
     st.warning("👆 Please upload a CSV file to begin.")
