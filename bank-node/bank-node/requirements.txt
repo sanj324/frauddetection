@@ -1,0 +1,11 @@
+streamlit
+pandas
+joblib
+matplotlib
+fastapi
+uvicorn
+mlflow
+scikit-learn
+shap
+lightgbm
+streamlit-shap

@@ -1,0 +1,5 @@
+account_age_days,balance,txn_count,last_5_days_avg,is_suspicious
+220,15000,12,1400,0
+45,2000,23,1800,1
+360,98000,2,300,0
+70,500,40,3000,1
